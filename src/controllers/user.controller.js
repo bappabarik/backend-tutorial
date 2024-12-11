@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import jwt from "jsonwebtoken"
@@ -257,7 +257,7 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
 const getCurrentUser = asyncHandler(async(req, res) => {
     return res
     .status(200)
-    .json(200, req.user, "Current user fetched successfully")
+    .json(new ApiResponse(200, req.user, "Current user fetched successfully"))
 })
 
 const updateAccountDetails = asyncHandler(async(req, res) => {
@@ -267,7 +267,7 @@ const updateAccountDetails = asyncHandler(async(req, res) => {
         throw new ApiError(400, "All fields are required")
     }
 
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -290,6 +290,13 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         throw new ApiError(400, "Avatar file is missing")
     }
 
+    //TODO: Delete old image after updating the new one
+    const oldAvatarUrl = req.user?.avatar
+
+    if (!oldAvatarUrl) {
+        throw new ApiError(400, "Old Avatar url is missing")
+    }
+
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
     if (!avatar.url) {
@@ -306,6 +313,8 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         {new: true}
     ).select("-password")
 
+    await deleteFromCloudinary(oldAvatarUrl)
+
     return res
     .status(200)
     .json(new ApiResponse(200, user, "Avatar updated successfully"))
@@ -313,6 +322,8 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
 
 const updateUserCoverImage = asyncHandler(async(req, res) => {
     const coverImageLocalPath = req.file?.path
+
+    const oldCoverImageUrl = req.user?.coverImage
 
     if (!coverImageLocalPath) {
         throw new ApiError(400, "Cover image file is missing")
@@ -333,6 +344,10 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
         },
         {new: true}
     ).select("-password")
+
+    if (oldCoverImageUrl) {
+        await deleteFromCloudinary(oldCoverImageUrl)
+    }
 
     return res
     .status(200)
