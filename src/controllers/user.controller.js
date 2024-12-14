@@ -293,6 +293,7 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
 
     //TODO: Delete old image after updating the new one
     const oldAvatarUrl = req.user?.avatar
+    
 
     if (!oldAvatarUrl) {
         throw new ApiError(400, "Old Avatar url is missing")
@@ -314,7 +315,9 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         {new: true}
     ).select("-password")
 
-    await deleteFromCloudinary(oldAvatarUrl)
+    const deletedAvatar = await deleteFromCloudinary(oldAvatarUrl, "image")
+    console.log(deletedAvatar);
+    
 
     return res
     .status(200)
@@ -347,7 +350,7 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
     ).select("-password")
 
     if (oldCoverImageUrl) {
-        await deleteFromCloudinary(oldCoverImageUrl)
+        await deleteFromCloudinary(oldCoverImageUrl, "image")
     }
 
     return res
